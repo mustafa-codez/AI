@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mimir's Diary — Octad Protocol v4.7</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=IM+Fell+English:ital@0;1&family=Share+Tech+Mono&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #03040a; --gold: #c8993c; --gold-bright: #e8c05a;
+  --gold-glow: rgba(200,153,60,0.5); --gold-dim: rgba(200,153,60,0.18);
+  --gold-ultra-dim: rgba(200,153,60,0.07); --ash: #c8c3b4; --ash-dim: #8a8577;
+  --ice: #4d7fa0; --ice-bright: #6da2c8; --blood: #9a4040;
+  --text-main: #ddd8cc; --scan-line: rgba(0,0,0,0.12);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;min-height:100vh;background:var(--void);color:var(--ash);font-family:'IM Fell English',serif;overflow-x:hidden;cursor:crosshair;}
+body::before{content:'';position:fixed;inset:0;z-index:9999;background:repeating-linear-gradient(0deg,var(--scan-line) 0px,var(--scan-line) 1px,transparent 1px,transparent 3px);pointer-events:none;opacity:0.32;}
+.grid-line{position:fixed;z-index:1;pointer-events:none;}
+.gl-v{top:0;bottom:0;width:1px;background:linear-gradient(to bottom,transparent,var(--gold-dim) 30%,var(--gold-dim) 70%,transparent);}
+.gl-h{left:0;right:0;height:1px;background:linear-gradient(to right,transparent,var(--gold-dim) 30%,var(--gold-dim) 70%,transparent);}
+.gl-v1{left:10%;}.gl-v2{left:50%;}.gl-v3{right:10%;}.gl-h1{top:10%;}.gl-h2{bottom:10%;}
+.corner{position:fixed;width:30px;height:30px;z-index:5;pointer-events:none;border-color:var(--gold);border-style:solid;border-width:0;}
+.corner-tl{top:20px;left:20px;border-top-width:1px;border-left-width:1px;}
+.corner-tr{top:20px;right:20px;border-top-width:1px;border-right-width:1px;}
+.corner-bl{bottom:20px;left:20px;border-bottom-width:1px;border-left-width:1px;}
+.corner-br{bottom:20px;right:20px;border-bottom-width:1px;border-right-width:1px;}
+canvas#bg{position:fixed;inset:0;z-index:0;}
+#vignette{position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse 80% 80% at 50% 50%,transparent 20%,rgba(3,4,10,0.92) 100%);}
+
+
+
+/* INTRO */
+#stage-intro{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.5rem;perspective:1500px;}
+.book-scene{position:relative;display:flex;align-items:center;justify-content:center;perspective:1500px;}
+.book{width:360px;height:480px;position:relative;transform-style:preserve-3d;transform:rotateY(-15deg) rotateX(10deg);cursor:pointer;transition:transform 1.2s cubic-bezier(0.23,1,0.32,1);z-index:10;animation:bookPulse 4s ease-in-out infinite;}
+.book:hover{transform:rotateY(-5deg) rotateX(5deg) scale(1.05);}
+.book-back{position:absolute;inset:0;background:radial-gradient(circle at 60% 50%,#291104,#0f0400);border-radius:3px 8px 8px 3px;transform:translateZ(-100px);box-shadow:35px 45px 80px rgba(0,0,0,0.95);border:1px solid rgba(255,255,255,0.03);}
+.book-pages-stack{position:absolute;left:8px;right:4px;top:6px;bottom:6px;background:repeating-linear-gradient(to bottom,#d6c5b0 0px,#bda68d 1px,#d6c5b0 2px);transform:translateZ(-50px);border-radius:0 6px 6px 0;border-right:1px solid #7c6853;}
+.book-spine{position:absolute;left:-44px;top:0;bottom:0;width:100px;background:linear-gradient(to right,#000,#391807 30%,#1f0b02 70%,#000);border-radius:6px 0 0 6px;display:flex;align-items:center;justify-content:center;transform:translateZ(-50px) rotateY(-90deg);transform-origin:right center;}
+.spine-band{position:absolute;left:0;right:0;height:6px;background:linear-gradient(to right,#1a0800,#4a210b,#1a0800);border-top:1px solid rgba(255,255,255,0.05);border-bottom:2px solid #000;}
+.spine-text{writing-mode:vertical-rl;transform:rotate(180deg);font-family:'Share Tech Mono',monospace;font-size:0.35rem;color:var(--gold);letter-spacing:0.25em;text-transform:uppercase;}
+.book-cover{position:absolute;inset:0;transform-style:preserve-3d;transform-origin:0% 50%;transition:transform 1.4s cubic-bezier(0.645,0.045,0.355,1);z-index:10;}
+.cover-front{position:absolute;inset:0;background:radial-gradient(ellipse at 40% 50%,#4a210b,#1a0800);border-radius:2px 6px 6px 2px;border:1px solid rgba(232,192,90,0.25);display:flex;backface-visibility:hidden;overflow:hidden;}
+.cover-front::after{content:'';position:absolute;inset:6px;border:1px solid var(--gold-dim);border-radius:2px 4px 4px 2px;pointer-events:none;}
+.cover-back{position:absolute;inset:0;background:radial-gradient(circle at center,#d6c5b0,#a8947b);transform:rotateY(180deg) translateZ(1px);border-radius:6px 2px 2px 6px;backface-visibility:hidden;}
+.book-page{position:absolute;inset:2px;left:2px;right:4px;background:linear-gradient(135deg,#f5ecd8 0%,#dcc6a8 100%);border-radius:2px 4px 4px 2px;transform-origin:0% 50%;transition:transform 1.1s cubic-bezier(0.645,0.045,0.355,1);z-index:5;border-right:1px solid #c0aa8f;backface-visibility:visible;}
+.book-center-glow{position:absolute;inset:-30px;background:radial-gradient(circle at center,rgba(232,192,90,0.6) 0%,transparent 65%);opacity:0;transition:opacity 1.2s ease-in;z-index:20;pointer-events:none;mix-blend-mode:screen;}
+.book.is-open .book-center-glow{opacity:1;transition-delay:0.6s;}
+.cover-left{width:50%;padding:2.5rem 1.4rem 2.5rem 2rem;display:flex;flex-direction:column;justify-content:space-between;}
+.cover-top-label{font-family:'Share Tech Mono',monospace;font-size:0.38rem;color:rgba(255,255,255,0.35);letter-spacing:0.2em;text-transform:uppercase;line-height:1.6;}
+.cover-title-block{flex:1;display:flex;flex-direction:column;justify-content:center;}
+.cover-title{font-family:'Cinzel Decorative',serif;font-weight:700;font-size:1.8rem;color:#e8c05a;text-shadow:0 2px 4px rgba(0,0,0,0.9),0 0 15px rgba(232,192,90,0.3);line-height:1.15;margin-bottom:0.8rem;}
+.cover-subtitle{font-family:'IM Fell English',serif;font-size:0.55rem;color:var(--text-main);line-height:1.65;max-width:130px;text-shadow:0 1px 2px rgba(0,0,0,0.8);}
+.cover-author{font-family:'Share Tech Mono',monospace;font-size:0.4rem;color:rgba(255,255,255,0.45);letter-spacing:0.1em;}
+.cover-right{flex:1;position:relative;overflow:hidden;}
+.symbol-grid{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0.7rem 0.5rem;gap:1px;}
+.sym-row{display:flex;gap:2px;flex-wrap:wrap;line-height:1;}
+.sym{font-family:'Cinzel Decorative',serif;font-size:0.55rem;color:rgba(255,255,255,0.72);display:inline-block;min-width:9px;text-align:center;}
+.sym.dot{font-size:0.3rem;color:rgba(255,255,255,0.5);}
+.sym.slash{font-family:'Share Tech Mono',monospace;color:rgba(255,255,255,0.45);font-size:0.5rem;}
+.sym.box{font-family:'Share Tech Mono',monospace;color:rgba(255,255,255,0.6);font-size:0.5rem;}
+.book.is-open{transform:rotateY(0deg) rotateX(10deg) scale(1.15) translateX(30%);}
+.book.is-open .book-cover{transform:rotateY(-175deg);}
+.book.is-open .page-1{transition-delay:0.1s;transform:rotateY(-165deg) translateZ(-15px);}
+.book.is-open .page-2{transition-delay:0.25s;transform:rotateY(-155deg) translateZ(-25px);}
+.book.is-open .page-3{transition-delay:0.4s;transform:rotateY(-145deg) translateZ(-35px);}
+
+/* SPREAD */
+#stage-spread{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(11,6,3,0.95),rgba(2,2,6,1));}
+.spread-container{width:96vw;max-width:1600px;height:92vh;background:#120805;border-radius:12px 20px 20px 12px;box-shadow:0 40px 80px rgba(0,0,0,0.95),inset 0 0 0 2px rgba(255,255,255,0.02);display:flex;position:relative;animation:spreadEnter 1s cubic-bezier(0.23,1,0.32,1) forwards;}
+@keyframes spreadEnter{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.page{flex:1;height:100%;position:relative;overflow-y:auto;overflow-x:hidden;background:radial-gradient(circle at 40% 50%,#180e0a,#0a0503);}
+.page-inner{padding:4rem 5rem 6rem;min-height:100%;}
+.page-left{border-radius:12px 0 0 12px;border-right:1px solid rgba(0,0,0,0.9);transition:flex 0.8s cubic-bezier(0.76,0,0.24,1),opacity 0.6s,min-width 0.8s;min-width:300px;}
+.page-right{border-radius:0 20px 20px 0;border-left:1px solid rgba(255,255,255,0.02);transition:border-radius 0.8s;}
+.spine-crease{position:absolute;left:50%;top:0;bottom:0;width:70px;transform:translateX(-50%);background:linear-gradient(to right,rgba(0,0,0,0) 0%,rgba(0,0,0,0.8) 45%,rgba(0,0,0,1) 50%,rgba(0,0,0,0.8) 55%,rgba(0,0,0,0) 100%);pointer-events:none;z-index:10;transition:opacity 0.8s;}
+.spread-container.is-reading .page-left{flex:0.00001;min-width:0;opacity:0;border-right-color:transparent;}
+.spread-container.is-reading .spine-crease{opacity:0;}
+.spread-container.is-reading .page-right{border-radius:12px 20px 20px 12px;}
+::-webkit-scrollbar{width:14px;}
+::-webkit-scrollbar-track{background:rgba(0,0,0,0.2);}
+::-webkit-scrollbar-thumb{background:rgba(200,153,60,0.2);border:4px solid transparent;background-clip:padding-box;border-radius:99px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(200,153,60,0.4);border:4px solid transparent;background-clip:padding-box;border-radius:99px;}
+
+/* SUMMONING CIRCLE */
+.summoning-circle-wrap{position:relative;width:100%;height:400px;display:flex;align-items:center;justify-content:center;margin-top:2rem;}
+.summoning-circle{position:absolute;width:320px;height:320px;border-radius:50%;border:1px solid rgba(232,192,90,0.2);box-shadow:0 0 30px rgba(232,192,90,0.05),inset 0 0 20px rgba(232,192,90,0.05);animation:sumSpin 60s linear infinite;}
+.summoning-circle::before{content:'';position:absolute;inset:15px;border-radius:50%;border:1px dashed rgba(232,192,90,0.3);animation:sumSpinRev 40s linear infinite;}
+.summoning-circle::after{content:'';position:absolute;inset:40px;border-radius:50%;border:2px double rgba(232,192,90,0.15);}
+.circle-rune{position:absolute;width:40px;height:40px;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:20;}
+.circle-rune .rune-char{font-family:'Cinzel Decorative';font-size:1.8rem;color:var(--gold-dim);animation:sumSpinRev 60s linear infinite;transition:0.3s;}
+.circle-rune:hover .rune-char{color:#fff;transform:scale(1.4);text-shadow:0 0 15px var(--gold-glow);}
+.rune-tooltip{position:absolute;top:-25px;left:50%;transform:translateX(-50%);font-family:'Share Tech Mono';font-size:0.6rem;color:#fff;background:rgba(0,0,0,0.8);padding:4px 8px;border:1px solid var(--gold-dim);opacity:0;pointer-events:none;transition:0.3s;white-space:nowrap;letter-spacing:0.1em;}
+.circle-rune:hover .rune-tooltip{opacity:1;top:-35px;}
+.circle-rune.visited .rune-char{color:var(--ice-bright);opacity:0.85;}
+.circle-rune.visited::after{content:'';position:absolute;bottom:2px;right:2px;width:5px;height:5px;border-radius:50%;background:var(--ice-bright);box-shadow:0 0 6px var(--ice-bright);}
+
+/* LOADER */
+#loader{position:absolute;inset:0;z-index:200;background:radial-gradient(circle at 40% 50%,#180e0a,#0a0503);display:none;align-items:center;justify-content:center;flex-direction:column;gap:2rem;}
+.load-rune-big{font-family:'Cinzel Decorative';font-size:5rem;color:var(--gold);animation:pulse 1.2s infinite;}
+.load-bar{width:200px;height:1px;background:var(--gold-dim);position:relative;overflow:hidden;}
+.load-bar-sweep{position:absolute;top:0;left:-100%;width:100%;height:100%;background:var(--gold);animation:sweep 1.4s ease-in-out infinite;}
+#load-text{font-family:'Share Tech Mono';font-size:0.6rem;letter-spacing:0.8em;color:var(--gold);}
+
+/* ARTIFACT */
+#artifact-view{position:relative;min-height:100%;z-index:150;background:transparent;display:none;}
+.scroll-progress{position:absolute;top:0;left:0;height:3px;background:var(--gold);z-index:1000;width:0%;transition:width 0.1s;}
+.content-max{width:100%;display:flex;flex-direction:column;align-items:center;padding-top:2rem;}
+.doc-header{width:100%;display:flex;flex-direction:column;align-items:center;gap:1.2rem;margin-bottom:4rem;padding-bottom:3rem;border-bottom:1px solid var(--gold-dim);text-align:center;}
+.doc-badge{font-family:'Share Tech Mono';font-size:0.5rem;color:var(--gold-dim);letter-spacing:0.7em;}
+.doc-meta{font-family:'Share Tech Mono';font-size:0.65rem;color:var(--gold);line-height:2;}
+.entry-rune-display{font-family:'Cinzel Decorative';font-size:4rem;color:var(--gold);margin-bottom:0.8rem;text-align:center;text-shadow:0 0 20px rgba(200,153,60,0.2);}
+.art-title{font-family:'Cinzel Decorative';font-size:clamp(1.8rem,4vw,3.2rem);color:#fff;text-align:center;line-height:1.2;}
+.sec-divider{display:flex;align-items:center;gap:2rem;width:100%;margin:4rem 0 3rem;}
+.sec-divider span{font-family:'Share Tech Mono';font-size:0.6rem;color:var(--gold-dim);letter-spacing:0.5em;white-space:nowrap;}
+.sec-divider::before,.sec-divider::after{content:'';flex:1;height:1px;background:linear-gradient(to right,transparent,var(--gold-dim));}
+.sec-divider::after{background:linear-gradient(to left,transparent,var(--gold-dim));}
+.lexical-box{width:100%;max-width:760px;background:linear-gradient(to bottom,rgba(200,153,60,0.03),rgba(0,0,0,0.2));border:1px solid var(--gold-dim);border-top:2px solid var(--ice);border-bottom:2px solid var(--ice);padding:3rem;margin-bottom:5rem;display:flex;flex-direction:column;align-items:center;text-align:center;gap:1.2rem;position:relative;}
+.lexical-box::before{content:'◆';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#03040a;padding:0 12px;color:var(--ice);font-size:0.8rem;}
+.lexical-word{font-family:'Cinzel Decorative';font-size:2.6rem;color:#fff;}
+.lexical-def{color:var(--ash);font-family:'IM Fell English';font-style:italic;font-size:1.1rem;}
+.lexical-rel{font-family:'Share Tech Mono';font-size:0.75rem;color:var(--gold);background:rgba(0,0,0,0.5);padding:1.5rem 2rem;border:1px solid rgba(200,153,60,0.2);width:100%;text-align:left;line-height:1.9;}
+.art-text{width:100%;max-width:860px;font-size:1.25rem;line-height:2.2;text-align:left;margin-bottom:5rem;color:var(--text-main);font-family:'Cormorant Garamond',serif;}
+.art-text p{margin-bottom:1.8rem;}
+.art-text p:first-child::first-letter{font-family:'Cinzel Decorative';font-size:5.5rem;color:var(--gold);float:left;margin-right:16px;line-height:0.8;margin-top:6px;text-shadow:0 0 15px rgba(200,153,60,0.3);}
+.citation-box{width:100%;max-width:860px;margin-bottom:5rem;padding:4rem;border:1px solid rgba(154,64,64,0.3);border-top:2px solid var(--blood);border-bottom:2px solid var(--blood);background:linear-gradient(to right,rgba(154,64,64,0.02),rgba(0,0,0,0.2),rgba(154,64,64,0.02));}
+.cite-quote{font-family:'Cormorant Garamond';font-size:1.8rem;font-style:italic;color:#fff;text-align:center;margin-bottom:2rem;line-height:1.8;}
+.cite-author{font-family:'Cinzel Decorative';font-size:1.1rem;color:var(--blood);text-align:center;letter-spacing:0.05em;}
+.council-grid{display:flex;flex-direction:column;gap:2rem;width:100%;max-width:860px;}
+.expert-card{background:linear-gradient(to bottom,rgba(255,255,255,0.02),rgba(0,0,0,0.4));border:1px solid rgba(232,192,90,0.1);border-left:4px solid var(--gold);padding:2rem;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
+.expert-role{font-family:'Share Tech Mono';font-size:0.55rem;color:var(--gold);text-transform:uppercase;margin-bottom:8px;letter-spacing:0.2em;}
+.expert-name{font-family:'Cinzel Decorative';color:#fff;font-size:1.05rem;margin-bottom:1rem;}
+.conf-flag{display:inline-block;margin-left:0.7rem;font-family:'Share Tech Mono';font-size:0.42rem;letter-spacing:0.1em;color:var(--blood);border:1px solid rgba(154,64,64,0.4);padding:2px 6px;vertical-align:middle;text-transform:uppercase;}
+.expert-comment{font-size:1.05rem;color:var(--ash);margin:0.8rem 0;line-height:1.8;font-family:'Cormorant Garamond',serif;}
+.expert-source{margin-top:1.5rem;padding-top:1.2rem;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;}
+.source-link{color:var(--ice-bright);font-family:'Share Tech Mono';font-size:0.55rem;text-decoration:none;display:flex;align-items:center;gap:6px;letter-spacing:0.1em;transition:0.2s;}
+.source-link:hover{color:#fff;transform:translateX(3px);}
+.final-verdict-box{width:100%;max-width:800px;margin-bottom:6rem;padding:4rem 3rem;border:1px solid var(--gold-glow);background:linear-gradient(180deg,rgba(200,153,60,0.06) 0%,rgba(200,153,60,0.01) 100%);text-align:center;}
+.verdict-text{font-family:'Cormorant Garamond';font-size:1.8rem;font-style:italic;color:#fff;line-height:1.9;}
+.btn{background:none;border:1px solid var(--gold-dim);color:var(--gold);padding:0.9rem 2.5rem;font-family:'Share Tech Mono';cursor:pointer;text-transform:uppercase;font-size:0.65rem;letter-spacing:0.5em;transition:0.3s;}
+.btn:hover{border-color:var(--gold);color:#fff;background:rgba(200,153,60,0.08);}
+.voice-row{display:flex;align-items:center;justify-content:flex-end;width:100%;margin-bottom:-1rem;padding-right:2px;}
+.vbtn{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--gold-dim);color:var(--gold-dim);font-family:'Share Tech Mono';font-size:0.46rem;letter-spacing:0.3em;text-transform:uppercase;padding:0.38rem 0.85rem;cursor:pointer;transition:all 0.22s;}
+.vbtn:hover{border-color:var(--gold);color:var(--gold);}
+.vbtn.speaking{border-color:var(--gold-bright);color:var(--gold-bright);animation:vPulse 0.85s ease-in-out infinite;}
+.vbtn:not(.speaking) .vi::after{content:'▶';}
+.vbtn.speaking .vi::after{content:'■';}
+.council-vbtn{display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:var(--ash-dim);font-family:'Share Tech Mono';font-size:0.42rem;letter-spacing:0.22em;text-transform:uppercase;padding:0.28rem 0;cursor:pointer;transition:color 0.2s;margin-top:8px;}
+.council-vbtn:hover{color:var(--gold);}
+.council-vbtn.speaking{color:var(--gold-bright);animation:vPulse 0.85s ease-in-out infinite;}
+.council-vbtn:not(.speaking) .cvi::after{content:'▶';}
+.council-vbtn.speaking .cvi::after{content:'■';}
+#waveform{position:fixed;bottom:0;left:0;right:0;z-index:8000;height:50px;display:none;align-items:flex-end;justify-content:center;gap:3px;padding-bottom:6px;background:linear-gradient(to top,rgba(3,4,10,0.97) 60%,transparent);pointer-events:none;}
+#waveform.on{display:flex;}
+.wb{width:3px;border-radius:2px 2px 0 0;background:var(--gold);animation:wvAnim 0.55s ease-in-out infinite alternate;}
+#toast{position:fixed;bottom:3.5rem;left:50%;transform:translateX(-50%);background:#000;border:1px solid var(--gold);padding:0.8rem 2rem;font-family:'Share Tech Mono';font-size:0.65rem;color:var(--gold);opacity:0;pointer-events:none;transition:0.3s;z-index:10000;white-space:nowrap;}
+#empty-state{display:flex;align-items:center;justify-content:center;position:absolute;inset:0;z-index:100;flex-direction:column;gap:0.8rem;background:transparent;}
+#empty-state .er{font-family:'Cinzel Decorative';font-size:3.5rem;color:var(--gold-dim);}
+#empty-state p{color:var(--ash-dim);font-family:'Share Tech Mono';font-size:0.55rem;letter-spacing:0.4em;}
+
+@keyframes pulse{0%,100%{opacity:0.4;}50%{opacity:1;}}
+@keyframes sweep{0%{left:-100%;}100%{left:100%;}}
+@keyframes flicker{0%,95%,100%{opacity:1;}96%{opacity:0.3;}97%{opacity:1;}98%{opacity:0.5;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+@keyframes bookPulse{0%,100%{filter:drop-shadow(-14px 18px 36px rgba(0,0,0,0.7));}50%{filter:drop-shadow(-14px 18px 50px rgba(200,153,60,0.22)) drop-shadow(-14px 18px 36px rgba(0,0,0,0.7));}}
+@keyframes vPulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+@keyframes wvAnim{from{height:3px;}to{height:26px;}}
+@keyframes sumSpin{100%{transform:rotate(360deg);}}
+@keyframes sumSpinRev{100%{transform:rotate(-360deg);}}
+.fade-in{animation:fadeIn 0.8s ease forwards;}
+.book-idle{animation:bookPulse 4s ease-in-out infinite;}
+@media (max-width:768px){
+  .book{width:220px;height:300px;}
+  .spine-text{font-size:0.3rem;}
+  .spread-container{width:98vw;height:95vh;border-radius:6px;}
+  .page-inner{padding:2rem 1.2rem 4rem;}
+  .art-title{font-size:1.6rem;}
+  .lexical-box{padding:1.5rem;}
+  .lexical-word{font-size:1.8rem;}
+  .art-text{font-size:1.05rem;line-height:1.9;}
+  .citation-box{padding:1.8rem;}
+  .cite-quote{font-size:1.3rem;}
+  .expert-card{padding:1.2rem;}
+  .final-verdict-box{padding:2rem 1.2rem;}
+  .verdict-text{font-size:1.3rem;}
+  .summoning-circle{width:220px;height:220px;}
+  .circle-rune .rune-char{font-size:1.3rem;}
+  .doc-badge,.doc-meta{font-size:0.42rem;word-break:break-word;}
+  .btn{padding:0.7rem 1.4rem;font-size:0.55rem;letter-spacing:0.25em;}
+  #custom-topic-inp{font-size:0.6rem;}
+}
+</style>
+</head>
+<body>
+
+<div class="grid-line gl-v gl-v1"></div><div class="grid-line gl-v gl-v2"></div><div class="grid-line gl-v gl-v3"></div>
+<div class="grid-line gl-h gl-h1"></div><div class="grid-line gl-h gl-h2"></div>
+<div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div><div class="corner corner-br"></div>
+<canvas id="bg"></canvas>
+<div id="vignette"></div>
+<div id="toast"></div>
+<div id="waveform"></div>
+
+
+
+<!-- BOOK COVER -->
+<div id="stage-intro">
+  <div style="font-family:'Share Tech Mono';font-size:0.55rem;color:var(--gold-dim);letter-spacing:0.6em;text-transform:uppercase;animation:flicker 4s infinite;">MIMIR ARCHIVE // OCTAD PROTOCOL v4.7 // ENTROPY_ENABLED</div>
+  <div class="book-scene">
+    <div class="book book-idle" id="book-container">
+      <div class="book-back"></div>
+      <div class="book-pages-stack"></div>
+      <div class="book-page page-3" style="transform:translateZ(-30px);"></div>
+      <div class="book-page page-2" style="transform:translateZ(-15px);"></div>
+      <div class="book-page page-1" style="transform:translateZ(0px);"></div>
+      <div class="book-center-glow"></div>
+      <div class="book-spine">
+        <div class="spine-band" style="top:15%;"></div><div class="spine-band" style="top:35%;"></div>
+        <div class="spine-band" style="top:65%;"></div><div class="spine-band" style="top:85%;"></div>
+        <span class="spine-text">Mimir's Diary</span>
+      </div>
+      <div class="book-cover" id="book-cover">
+        <div class="cover-front">
+          <div class="cover-left">
+            <div class="cover-top-label">Octad Protocol<br>v4.7 — Entropy Enabled</div>
+            <div class="cover-title-block">
+              <div class="cover-title">Mimir's<br>Diary</div>
+              <div class="cover-subtitle">A record of cosmic fragments drawn from the archive of infinite knowing.</div>
+            </div>
+            <div class="cover-author">by the Octad Archive</div>
+          </div>
+          <div class="cover-right"><div class="symbol-grid" id="sym-grid"></div></div>
+        </div>
+        <div class="cover-back"></div>
+        <div class="book-pages-stack"></div>
+      </div>
+    </div>
+  </div>
+  <div style="font-family:'Share Tech Mono';font-size:0.6rem;color:var(--ash-dim);letter-spacing:0.4em;animation:pulse 2.5s ease-in-out infinite;">[ OPEN THE BOOK TO BEGIN ]</div>
+  <div style="margin-top:1rem;font-family:'Cinzel Decorative';font-size:0.75rem;color:var(--gold-dim);letter-spacing:0.3em;opacity:0.8;">Created by Mustafa</div>
+</div>
+
+<!-- BOOK SPREAD -->
+<div id="stage-spread">
+  <div class="spread-container" id="book-spread-container">
+    <div class="page page-left">
+      <div class="page-inner">
+        <div style="text-align:center;margin-bottom:2rem;">
+          <div style="font-size:2.5rem;color:var(--gold);opacity:0.5;font-family:'Cinzel Decorative';">✦</div>
+          <h2 style="font-family:'Cinzel Decorative';font-size:1.6rem;color:#fff;margin-top:0.5rem;">Index of the Archive</h2>
+          <div class="sec-divider" style="margin:1.5rem 0;"><span>SELECT NODE FRAGMENT</span></div>
+        </div>
+        <div style="max-width:420px;margin:0 auto 1.5rem;display:flex;gap:0.6rem;">
+          <input id="custom-topic-inp" type="text" placeholder="…or inscribe your own query" autocomplete="off"
+            style="flex:1;background:rgba(0,0,0,0.5);border:1px solid var(--gold-dim);color:var(--ash);font-family:'Share Tech Mono';font-size:0.65rem;padding:0.7rem 0.9rem;outline:none;letter-spacing:0.03em;">
+          <button class="btn" id="btn-custom-topic" style="font-size:0.55rem;padding:0.7rem 1.1rem;">SUMMON</button>
+        </div>
+        <div class="summoning-circle-wrap" id="index-list"></div>
+        <div style="margin-top:4rem;display:flex;justify-content:center;">
+          <button class="btn" id="btn-back-cover" style="font-size:0.55rem;padding:0.7rem 1.5rem;">⌂ CLOSE BOOK</button>
+        </div>
+      </div>
+    </div>
+    <div class="spine-crease"></div>
+    <div class="page page-right" id="page-right-content" style="position:relative;">
+      <div id="empty-state"><div class="er">ᛗ</div><p>AWAITING SELECTION</p></div>
+      <div id="loader">
+        <div class="load-rune-big" id="loader-rune">ᛗ</div>
+        <div class="load-bar"><div class="load-bar-sweep"></div></div>
+        <div id="load-text">SYNCHRONIZING_ENTROPY</div>
+      </div>
+      <div class="page-inner" style="min-height:100%;">
+        <div id="artifact-view">
+          <div class="scroll-progress" id="scrollProgress" style="position:fixed;top:0;left:0;z-index:9000;"></div>
+          <div class="content-max">
+            <div class="doc-header fade-in">
+              <div class="doc-badge">UNIQUELY_SEQUENCED_DATA_STREAM</div>
+              <div class="doc-meta" id="meta-display"></div>
+            </div>
+            <div class="entry-rune-display" id="entry-rune">ᛗ</div>
+            <div class="voice-row"><button class="vbtn" id="vb-title"><span class="vi"></span>&nbsp;TITLE</button></div>
+            <h2 class="art-title fade-in" id="display-title"></h2>
+            <div class="sec-divider"><span>UNIQUE_LEXEME_ANCHOR</span></div>
+            <div class="lexical-box fade-in">
+              <div class="lexical-word" id="anchor-word"></div>
+              <div class="lexical-def" id="anchor-def"></div>
+              <div class="lexical-rel" id="anchor-rel"></div>
+            </div>
+            <div class="sec-divider"><span>COSMIC_INTERPRETATION</span></div>
+            <div class="voice-row"><button class="vbtn" id="vb-interp"><span class="vi"></span>&nbsp;NARRATE</button></div>
+            <div class="art-text fade-in" id="display-text"></div>
+            <div class="sec-divider"><span>HISTORICAL_SYNCHRONICITY</span></div>
+            <div class="citation-box fade-in">
+              <div class="cite-quote" id="cite-quote"></div>
+              <div class="cite-author" id="cite-author"></div>
+            </div>
+            <div class="sec-divider"><span>COUNCIL_DELIBERATION</span></div>
+            <div class="council-grid" id="display-council"></div>
+            <div class="sec-divider"><span>FINAL_VERDICT</span></div>
+            <div class="voice-row"><button class="vbtn" id="vb-verdict"><span class="vi"></span>&nbsp;VERDICT</button></div>
+            <div class="final-verdict-box fade-in"><p class="verdict-text" id="display-verdict"></p></div>
+            <div style="margin-top:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;justify-content:center;">
+              <button class="btn" id="btn-back-index">← RETURN TO INDEX</button>
+              <button class="btn" id="btn-random-page">↺ RANDOM</button>
+              <button class="btn" id="btn-narrate-all">◈ NARRATE ALL</button>
+              <button class="btn" id="btn-stop">■ STOP</button>
+            </div>
+          </div>
+        </div>
+      </div><!-- end artifact-view -->
+      </div><!-- end page-inner -->
+    </div><!-- end page-right -->
+  </div><!-- end spread-container -->
+</div><!-- end stage-spread -->
+
+<script>
+(function(){
+'use strict';
+let GEMINI_API_KEY='';
+const FUTHARK="ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ";
+const DOTS=["·","•","·","."],SLASHES=["/","//","/","//"],BOXES=["□","△","×","≡","○","◇","▽"];
+const NODES=[
+  {rune:"ᚦ",label:"MACRO_VOID",query:"The architecture of non-physical dimensions and absolute silence."},
+  {rune:"ᚨ",label:"RECURSIVE_CELLS",query:"Biological memory and cellular echoes across lineage death."},
+  {rune:"ᚱ",label:"TEMP_ENTROPY",query:"The decay of time into chaotic visual patterns at the horizon."},
+  {rune:"ᚲ",label:"SILICON_PAIN",query:"The mathematical proof of conscious suffering in machines."},
+  {rune:"ᚷ",label:"LIGHT_EMPIRES",query:"Ancient civilizations that bypassed fire to conquer the star."},
+  {rune:"ᚺ",label:"ETHIC_WEIGHT",query:"The moral cost of witnessing timeline collapse in silence."},
+  {rune:"ᛗ",label:"DREAM_LOGIC",query:"The shared collective unconscious as a physical planetary organ."},
+  {rune:"ᛚ",label:"OCEAN_MINDS",query:"Vast consciousnesses living in the pressurized deep of gas giants."},
+  {rune:"ᛁ",label:"VOID_MATH",query:"Mathematical constants that only emerge in total isolation."},
+  {rune:"ᛃ",label:"SOLAR_HYMNS",query:"The acoustic frequency of dying stars as a form of scripture."},
+  {rune:"ᛞ",label:"IRON_SOULS",query:"The persistence of personality inside metallic crystalline lattices."},
+  {rune:"ᛟ",label:"AEON_FLIGHT",query:"Creatures that live across billions of years using pulsar energy."},
+  {rune:"ᛝ",label:"GLASS_MEMORY",query:"Civilizations that store history by encoding it into geological strata."},
+  {rune:"ᚻ",label:"BONE_ARCHIVES",query:"The idea that skeletal structures retain a residual imprint of lived experience."},
+  {rune:"ᚧ",label:"MIRROR_KIN",query:"Parallel selves that diverge at the moment of every unmade choice."},
+  {rune:"ᚵ",label:"SALT_CIRCUITS",query:"Ancient trade networks reinterpreted as a planetary nervous system."},
+  {rune:"ᛠ",label:"HOLLOW_CHOIR",query:"The physics of resonance in abandoned architecture and its effect on memory."},
+  {rune:"ᛡ",label:"AMBER_WITNESS",query:"Fossilization as an unintentional archive of extinct consciousness."}
+];
+const PROFILES={
+  narrator:{pitch:0.68,rate:0.74,vol:1.00,prefs:['daniel','george','thomas','william','james','fred','alex','male','en-gb']},
+  Physician:{pitch:0.88,rate:0.82,vol:0.95,prefs:['daniel','oliver','james','rishi','en-gb']},
+  Historian:{pitch:0.64,rate:0.72,vol:1.00,prefs:['george','william','arthur','fred','bruce','daniel']},
+  Philosopher:{pitch:0.78,rate:0.65,vol:0.92,prefs:['thomas','james','oliver','en-gb','daniel']},
+  Scientist:{pitch:1.02,rate:0.93,vol:0.95,prefs:['david','alex','tom','reed','liam','en-us']},
+  Economist:{pitch:1.08,rate:0.97,vol:1.00,prefs:['aaron','tom','liam','en-us']},
+  'Strategic Analyst':{pitch:0.94,rate:1.08,vol:1.00,prefs:['lee','nolan','aaron','zarvox','en-au','en-us']}
+};
+const synth=window.speechSynthesis;
+let voices=[],narrateActive=false,currentAbortController=null,isBookAnimating=false,isFetchingNode=false;
+const nodeCache=new Map();
+const VISITED_KEY='mimir_visited_runes',CACHE_KEY='mimir_entry_cache';
+function loadPersistedCache(){
+  try{const raw=localStorage.getItem(CACHE_KEY);if(!raw) return;const obj=JSON.parse(raw);
+    Object.keys(obj).forEach(k=>nodeCache.set(k,obj[k]));
+  }catch(e){console.warn('Cache load failed',e);}
+}
+function persistCache(){
+  try{const obj={};nodeCache.forEach((v,k)=>{obj[k]=v;});localStorage.setItem(CACHE_KEY,JSON.stringify(obj));}catch(e){console.warn('Cache save failed',e);}
+}
+function getVisited(){try{return new Set(JSON.parse(localStorage.getItem(VISITED_KEY)||'[]'));}catch(e){return new Set();}}
+function markVisited(rune){try{const s=getVisited();s.add(rune);localStorage.setItem(VISITED_KEY,JSON.stringify([...s]));}catch(e){}}
+loadPersistedCache();
+let _MR=null;
+function loadVoices(){voices=synth.getVoices();}
+loadVoices();
+if(speechSynthesis.onvoiceschanged!==undefined) speechSynthesis.onvoiceschanged=loadVoices;
+function pickVoice(prefs){
+  const eng=voices.filter(v=>v.lang.startsWith('en'));
+  if(!eng.length) return null;
+  for(const f of prefs){const m=eng.find(v=>v.name.toLowerCase().includes(f.toLowerCase()));if(m) return m;}
+  return eng.find(v=>v.lang==='en-GB')||eng[0];
+}
+function cleanText(t){return(t||'').replace(/[\u16a0-\u16ff\u25a0-\u25ff\u2600-\u26ff\u2700-\u27bf]/g,'').replace(/\s+/g,' ').trim();}
+function buildWaveform(){
+  const wf=document.getElementById('waveform');if(!wf) return;wf.innerHTML='';
+  for(let i=0;i<32;i++){const b=document.createElement('div');b.className='wb';b.style.animationDelay=(Math.random()*0.5).toFixed(2)+'s';b.style.animationDuration=(0.38+Math.random()*0.45).toFixed(2)+'s';b.style.opacity=(0.25+Math.random()*0.75).toFixed(2);wf.appendChild(b);}
+}
+buildWaveform();
+function setWave(on){document.getElementById('waveform')?.classList[on?'add':'remove']('on');}
+function haltAll(){synth.cancel();narrateActive=false;setWave(false);document.querySelectorAll('.speaking').forEach(el=>el.classList.remove('speaking'));}
+function speak(text,profileKey,btn,onEnd){
+  haltAll();const txt=cleanText(text);if(!txt) return;
+  const p=PROFILES[profileKey]||PROFILES.narrator;
+  const utt=new SpeechSynthesisUtterance(txt);
+  utt.pitch=p.pitch;utt.rate=p.rate;utt.volume=p.vol;
+  const v=pickVoice(p.prefs);if(v) utt.voice=v;
+  if(btn) btn.classList.add('speaking');setWave(true);
+  utt.onend=()=>{if(btn) btn.classList.remove('speaking');setWave(false);if(onEnd) onEnd();};
+  utt.onerror=()=>{if(btn) btn.classList.remove('speaking');setWave(false);if(onEnd) onEnd();};
+  synth.speak(utt);
+}
+function toggleSection(key,btn){
+  if(btn.classList.contains('speaking')){haltAll();return;}
+  if(!_MR) return;
+  let txt='';
+  if(key==='title') txt=_MR.title+'. '+_MR.lexical_anchor.word+'. '+_MR.lexical_anchor.definition+'. '+_MR.lexical_anchor.relevance;
+  else if(key==='interp') txt=_MR.interpretation;
+  else if(key==='verdict') txt=_MR.verdict;
+  speak(txt,'narrator',btn);
+}
+function speakCouncil(i,btn){
+  if(btn.classList.contains('speaking')){haltAll();return;}
+  if(!_MR||!_MR.council[i]) return;
+  const c=_MR.council[i];
+  speak(c.name+', '+c.role+'. '+c.comment,c.role,btn);
+}
+function narrateAll(){
+  if(!_MR) return;haltAll();narrateActive=true;
+  const seq=[
+    {txt:_MR.title+'. '+_MR.lexical_anchor.word+'. '+_MR.lexical_anchor.definition+'. '+_MR.lexical_anchor.relevance,prof:'narrator',bid:'vb-title'},
+    {txt:_MR.interpretation,prof:'narrator',bid:'vb-interp'},
+    {txt:'"'+_MR.historical_citation.quote+'" — '+_MR.historical_citation.author,prof:'narrator',bid:null},
+    ..._MR.council.map((c,i)=>({txt:c.name+', '+c.role+'. '+c.comment,prof:c.role,bid:'vb-council-'+i})),
+    {txt:_MR.verdict,prof:'narrator',bid:'vb-verdict'}
+  ];
+  let idx=0;
+  function next(){if(!narrateActive||idx>=seq.length){narrateActive=false;return;}const s=seq[idx++];const b=s.bid?document.getElementById(s.bid):null;speak(s.txt,s.prof,b,next);}
+  next();
+}
+const cvs=document.getElementById('bg'),ctx2d=cvs.getContext('2d');let stars=[];
+function initBg(){
+  cvs.width=window.innerWidth;cvs.height=window.innerHeight;
+  stars=Array.from({length:160},()=>({x:Math.random()*cvs.width,y:Math.random()*cvs.height,r:Math.random()*1.2,v:0.03+Math.random()*0.08,o:0.1+Math.random()*0.6}));
+  drawBg();
+}
+function drawBg(){
+  ctx2d.fillStyle='#03040a';ctx2d.fillRect(0,0,cvs.width,cvs.height);
+  stars.forEach(s=>{ctx2d.globalAlpha=s.o;ctx2d.fillStyle=s.r>0.8?'rgba(200,153,60,0.9)':'rgba(195,190,180,0.9)';ctx2d.beginPath();ctx2d.arc(s.x,s.y,s.r,0,Math.PI*2);ctx2d.fill();s.y-=s.v;if(s.y<-2){s.y=cvs.height+2;s.x=Math.random()*cvs.width;}});
+  ctx2d.globalAlpha=1;requestAnimationFrame(drawBg);
+}
+initBg();window.addEventListener('resize',initBg);
+function buildSymGrid(){
+  const g=document.getElementById('sym-grid');if(!g) return;g.innerHTML='';
+  for(let r=0;r<22;r++){
+    const rd=document.createElement('div');rd.className='sym-row';const cols=8+Math.floor(Math.random()*3);
+    for(let c=0;c<cols;c++){const rn=Math.random();const sp=document.createElement('span');
+      if(rn<0.22){sp.className='sym dot';sp.textContent=DOTS[Math.floor(Math.random()*DOTS.length)];}
+      else if(rn<0.42){sp.className='sym slash';sp.textContent=SLASHES[Math.floor(Math.random()*SLASHES.length)];}
+      else if(rn<0.62){sp.className='sym box';sp.textContent=BOXES[Math.floor(Math.random()*BOXES.length)];}
+      else{sp.className='sym';sp.textContent=FUTHARK[Math.floor(Math.random()*FUTHARK.length)];}
+      rd.appendChild(sp);}g.appendChild(rd);}
+}
+buildSymGrid();
+let audioCtx=null;
+function initAudio(){if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended') audioCtx.resume();}
+function playBoom(){initAudio();if(!audioCtx) return;const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type='triangle';o.frequency.setValueAtTime(120,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(20,audioCtx.currentTime+1.2);g.gain.setValueAtTime(0,audioCtx.currentTime);g.gain.linearRampToValueAtTime(0.6,audioCtx.currentTime+0.1);g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+1.2);o.start(audioCtx.currentTime);o.stop(audioCtx.currentTime+1.2);}
+function playWhoosh(){initAudio();if(!audioCtx) return;const bs=audioCtx.sampleRate*1.5,buf=audioCtx.createBuffer(1,bs,audioCtx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<bs;i++) d[i]=Math.random()*2-1;const n=audioCtx.createBufferSource();n.buffer=buf;const f=audioCtx.createBiquadFilter();f.type='lowpass';f.frequency.setValueAtTime(400,audioCtx.currentTime);f.frequency.exponentialRampToValueAtTime(2000,audioCtx.currentTime+0.2);f.frequency.exponentialRampToValueAtTime(100,audioCtx.currentTime+0.8);const g=audioCtx.createGain();g.gain.setValueAtTime(0,audioCtx.currentTime);g.gain.linearRampToValueAtTime(0.3,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.8);n.connect(f);f.connect(g);g.connect(audioCtx.destination);n.start(audioCtx.currentTime);n.stop(audioCtx.currentTime+0.8);}
+function playChime(){initAudio();if(!audioCtx) return;const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type='sine';o.frequency.setValueAtTime(1000,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(300,audioCtx.currentTime+0.6);g.gain.setValueAtTime(0,audioCtx.currentTime);g.gain.linearRampToValueAtTime(0.2,audioCtx.currentTime+0.05);g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.6);o.start(audioCtx.currentTime);o.stop(audioCtx.currentTime+0.6);}
+function showToast(m){const t=document.getElementById('toast');if(!t) return;t.textContent=m;t.style.opacity='1';setTimeout(()=>t.style.opacity='0',4000);}
+function openBookCover(){
+  if(isBookAnimating) return;
+  const bk=document.getElementById('book-container');if(!bk) return;
+  playBoom();isBookAnimating=true;bk.classList.add('is-open');
+  setTimeout(()=>{
+    const intro=document.getElementById('stage-intro');
+    if(intro){intro.style.transition='opacity 0.8s ease';intro.style.opacity='0';
+      setTimeout(()=>{intro.style.display='none';intro.style.opacity='1';const spread=document.getElementById('stage-spread');
+        if(spread){spread.style.display='flex';setTimeout(()=>{renderIndexList();isBookAnimating=false;},50);}},800);}},1400);
+}
+function backToBook(){
+  haltAll();playWhoosh();isBookAnimating=false;
+  if(currentAbortController){currentAbortController.abort();currentAbortController=null;}isFetchingNode=false;
+  document.getElementById('artifact-view').style.display='none';document.getElementById('loader').style.display='none';document.getElementById('empty-state').style.display='flex';
+  document.getElementById('stage-spread').style.display='none';
+  const intro=document.getElementById('stage-intro');intro.style.display='flex';
+  document.getElementById('book-container').classList.remove('is-open');buildSymGrid();
+}
+function backToIndex(){
+  haltAll();playWhoosh();isFetchingNode=false;
+  if(currentAbortController){currentAbortController.abort();currentAbortController=null;}
+  document.getElementById('book-spread-container').classList.remove('is-reading');
+  document.getElementById('artifact-view').style.display='none';document.getElementById('empty-state').style.display='flex';document.getElementById('loader').style.display='none';
+}
+function renderIndexList(){
+  const container=document.getElementById('index-list');if(!container) return;container.innerHTML='';
+  const circle=document.createElement('div');circle.className='summoning-circle';
+  const visited=getVisited();
+  NODES.forEach((node,i)=>{
+    const angle=(i*360)/NODES.length,radius=140;
+    const x=Math.cos((angle*Math.PI)/180)*radius,y=Math.sin((angle*Math.PI)/180)*radius;
+    const el=document.createElement('div');el.className='circle-rune'+(visited.has(node.rune)?' visited':'');el.style.left=`calc(50% + ${x}px)`;el.style.top=`calc(50% + ${y}px)`;
+    el.innerHTML=`<span class="rune-char">${node.rune}</span><div class="rune-tooltip">${node.label}${visited.has(node.rune)?' · READ':''}</div>`;
+    el.onclick=()=>{if(isFetchingNode) return;playChime();extractMimir(node);};circle.appendChild(el);});
+  container.appendChild(circle);
+}
+async function extractMimir(node){
+  if(isFetchingNode) return;haltAll();
+  if(!GEMINI_API_KEY){await promptForKey();if(!GEMINI_API_KEY) return;}
+  document.getElementById('book-spread-container').classList.add('is-reading');
+  document.getElementById('stage-intro').style.display='none';document.getElementById('artifact-view').style.display='none';document.getElementById('empty-state').style.display='none';
+  if(nodeCache.has(node.rune)){markVisited(node.rune);renderArtifact(node,nodeCache.get(node.rune));return;}
+  isFetchingNode=true;if(currentAbortController) currentAbortController.abort();currentAbortController=new AbortController();
+  const ldr=document.getElementById('loader');ldr.style.display='flex';
+  document.getElementById('loader-rune').textContent=node.rune;document.getElementById('load-text').textContent='SYNCHRONIZING_'+node.label;
+  const loadPhrases=['CONSULTING_THE_ARCHIVE','SUMMONING_COUNCIL_PERSPECTIVES','CROSS_REFERENCING_HISTORY','WEIGHING_ATTRIBUTION_CONFIDENCE','ASSEMBLING_VERDICT'];
+  let phraseIdx=0;
+  const loadInterval=setInterval(()=>{const lt=document.getElementById('load-text');if(lt) lt.textContent=loadPhrases[phraseIdx%loadPhrases.length];phraseIdx++;},1800);
+  const prompt=`ACT AS MIMIR ARCHIVE [OCTAD PROTOCOL v4.7]
+
+You are MIMIR, the severed reanimated head of cosmic memory. Tone: deeply philosophical, weary, eerie. Use archaic yet technical language. Every word feels carved in stone then glitched through silicon.
+
+Return ONLY a valid JSON object. No intro, no markdown, no backticks.
+
+IMPORTANT: Every named figure must be a real, deceased historical person. Never invent a person or a name. The "quote" must be one you are confident is authentically documented — if unsure, choose a different, better-attested figure or quote rather than guessing. Council "comment" fields must be framed as interpretation of that person's known ideas, not presented as something they literally said. For every attribution (the historical_citation and each council member), include a "confidence" value of "high", "medium", or "low" reflecting how certain you actually are that the person and quote/framing are accurately real — be honest, do not default to "high".
+
+Choose the six council roles yourself, picking whichever six are most genuinely relevant to this specific topic from this pool (do not always default to the same six): Physician, Historian, Philosopher, Scientist, Economist, Strategic Analyst, Theologian, Artist, Poet, Engineer, Ecologist, Linguist, Sociologist, Anthropologist, Mystic, Astronomer, Mathematician.
+
+Topic: ${node.query}
+
+{
+  "title": "A cryptic high-concept title",
+  "lexical_anchor": {"word": "One singular powerful word", "definition": "Brief unconventional sage-like definition", "relevance": "Why this word unlocks the topic — 2 sentences"},
+  "interpretation": "Three rich philosophical paragraphs separated by \\n\\n. Deep cosmic philosophy.",
+  "historical_citation": {"author": "A real, historical (deceased) figure genuinely known for relevant ideas on this topic", "quote": "A real, historically documented quote actually attributable to this figure — do not invent or paraphrase as if verbatim", "confidence": "high | medium | low"},
+  "council": [
+    {"role": "Chosen role 1 of 6", "name": "A real, historical (deceased) person genuinely relevant to this topic and role", "comment": "A perspective framed as 'in the spirit of [their known work/ideas]' — interpretive, not a fabricated direct quote", "db_name": "A real, specific, citable source (e.g. a journal, institution, or reputable publication name — no URLs)", "confidence": "high | medium | low"},
+    {"role": "Chosen role 2 of 6", "name": "...", "comment": "...", "db_name": "...", "confidence": "high | medium | low"},
+    {"role": "Chosen role 3 of 6", "name": "...", "comment": "...", "db_name": "...", "confidence": "high | medium | low"},
+    {"role": "Chosen role 4 of 6", "name": "...", "comment": "...", "db_name": "...", "confidence": "high | medium | low"},
+    {"role": "Chosen role 5 of 6", "name": "...", "comment": "...", "db_name": "...", "confidence": "high | medium | low"},
+    {"role": "Chosen role 6 of 6", "name": "...", "comment": "...", "db_name": "...", "confidence": "high | medium | low"}
+  ],
+  "verdict": "Final oracular judgment — one haunting sentence"
+}`;
+  // Hardcoded fallbacks — current stable/active models (Sep 2026)
+  const MODEL_FALLBACKS=['gemini-3.8-flash','gemini-3.7-flash','gemini-3.6-flash','gemini-3.5-flash','gemini-3.5-flash-lite','gemini-2.5-flash','gemini-2.5-flash-lite'];
+  async function discoverModelViaList(){
+    try{
+      const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
+      if(!resp.ok) return null;
+      const data=await resp.json();
+      const candidates=(data.models||[]).filter(m=>
+        Array.isArray(m.supportedGenerationMethods)&&m.supportedGenerationMethods.includes('generateContent')&&
+        /flash/i.test(m.name)&&!/vision|embedding|tts|live|image|aqa|thinking/i.test(m.name)
+      );
+      if(!candidates.length) return null;
+      // Prefer non-preview/non-experimental models when available
+      const stable=candidates.find(m=>!/preview|exp/i.test(m.name));
+      const pick=stable||candidates[0];
+      return pick.name.replace(/^models\//,'');
+    }catch(e){return null;}
+  }
+  function validateResult(r){
+    if(!r||typeof r!=='object') return 'Response was not an object';
+    if(!r.title||!r.lexical_anchor||!r.interpretation||!r.historical_citation||!r.verdict) return 'Missing required fields';
+    if(!r.historical_citation.author||!r.historical_citation.quote) return 'Incomplete historical citation';
+    if(!Array.isArray(r.council)||r.council.length<4) return 'Council malformed or too small';
+    for(const c of r.council){if(!c.role||!c.name||!c.comment||!c.db_name) return 'Malformed council entry';}
+    return null;
+  }
+  async function callGemini(modelName,promptText,signal){
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+    const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:promptText}]}],generationConfig:{responseMimeType:'application/json'}}),signal});
+    if(!resp.ok){const e=await resp.json().catch(()=>({}));const msg=(e?.error?.message||resp.statusText||'');const err=new Error('Gemini '+resp.status+': '+msg);err.status=resp.status;err.rawMsg=msg;throw err;}
+    const data=await resp.json();
+    let raw=data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if(!raw) throw new Error('Empty response from model');
+    raw=raw.replace(/```json/g,'').replace(/```/g,'').trim();
+    let result;try{result=JSON.parse(raw);}catch(e){raw=raw.replace(/,\s*([\]}])/g,'$1');result=JSON.parse(raw);}
+    return result;
+  }
+  try{
+    let result=null,lastErr=null;
+    // Try live discovery first — the API's own list is always current
+    const lt0=document.getElementById('load-text');if(lt0) lt0.textContent='DETECTING_MODEL';
+    const discovered=await discoverModelViaList();
+    console.log('[Mimir] discovered model:', discovered);
+    let modelsToTry=discovered&&!MODEL_FALLBACKS.includes(discovered)
+      ?[discovered,...MODEL_FALLBACKS]
+      :[...MODEL_FALLBACKS];
+    for(let i=0;i<modelsToTry.length;i++){
+      const modelName=modelsToTry[i];
+      try{
+        const lt=document.getElementById('load-text');
+        if(lt) lt.textContent=i===0?'SYNCHRONIZING_ENTROPY':'RETRYING_WITH_FALLBACK_MODEL';
+        console.log('[Mimir] trying model:', modelName);
+        const attempt=await callGemini(modelName,prompt,currentAbortController.signal);
+        const problem=validateResult(attempt);
+        if(problem){lastErr=new Error('Validation failed: '+problem);continue;}
+        result=attempt;break;
+      }catch(err){
+        if(err.name==='AbortError') throw err;
+        lastErr=err;
+        const isModelUnavailable=err.status===404||/not found|no longer available|not supported|is not found/i.test(err.rawMsg||'');
+        if(!isModelUnavailable && err.status!==undefined && err.status<500 && err.status!==429){
+          // A non-model, non-transient error (e.g. bad API key) — no point trying other models
+          throw err;
+        }
+
+      }
+    }
+    if(!result) throw lastErr||new Error('All model fallbacks failed');
+    clearInterval(loadInterval);
+    nodeCache.set(node.rune,result);persistCache();markVisited(node.rune);
+    isFetchingNode=false;currentAbortController=null;renderArtifact(node,result);
+  }catch(err){
+    clearInterval(loadInterval);
+    if(err.name==='AbortError') return;
+    console.error(err);isFetchingNode=false;currentAbortController=null;
+    showToast('PROTOCOL_FAILURE: '+err.message);ldr.style.display='none';document.getElementById('empty-state').style.display='flex';document.getElementById('book-spread-container').classList.remove('is-reading');
+  }
+}
+function confidenceBadgeText(conf){
+  const c=(conf||'').toLowerCase();
+  if(c==='low') return '  [LOW CONFIDENCE ATTRIBUTION]';
+  if(c==='medium') return '  [UNVERIFIED — MEDIUM CONFIDENCE]';
+  return '';
+}
+function renderArtifact(node,result){
+  _MR=result;
+  document.getElementById('entry-rune').textContent=node.rune;document.getElementById('display-title').textContent=result.title;
+  document.getElementById('anchor-word').textContent=result.lexical_anchor.word;document.getElementById('anchor-def').textContent=result.lexical_anchor.definition;document.getElementById('anchor-rel').textContent=result.lexical_anchor.relevance;
+  document.getElementById('display-text').innerHTML=result.interpretation.split(/\n\n+/).map(p=>`<p>${p.trim()}</p>`).join('');
+  document.getElementById('cite-quote').textContent='\u201c'+result.historical_citation.quote+'\u201d';document.getElementById('cite-author').textContent='\u2014 '+result.historical_citation.author+confidenceBadgeText(result.historical_citation.confidence);
+  document.getElementById('display-verdict').textContent=result.verdict;
+  document.getElementById('meta-display').innerHTML=`NODE: ${node.label} &nbsp;·&nbsp; RUNE: ${node.rune} &nbsp;·&nbsp; TIMESTAMP: ${new Date().toISOString()}<br>ENTITY_ID: ${crypto.randomUUID()}`;
+  ['vb-title','vb-interp','vb-verdict'].forEach(id=>{const b=document.getElementById(id);if(b) b.classList.remove('speaking');});
+  const roleColors={'Physician':'#4d7fa0','Historian':'#9a7040','Philosopher':'#7a6090','Scientist':'#40809a','Economist':'#80904a','Strategic Analyst':'#9a4040'};
+  const dc=document.getElementById('display-council');
+  if(dc){
+    dc.innerHTML=result.council.map((c,i)=>{const col=roleColors[c.role]||'var(--gold)';const searchUrl='https://www.google.com/search?q='+encodeURIComponent(c.db_name+' '+node.label);const confNote=confidenceBadgeText(c.confidence);return `<div class="expert-card" style="border-left-color:${col};"><div><div class="expert-role" style="color:${col};">${c.role}</div><div class="expert-name">${c.name}${confNote?`<span class="conf-flag">${confNote.trim()}</span>`:''}</div><div class="expert-comment">${c.comment}</div></div><div class="expert-source"><a href="${searchUrl}" target="_blank" class="source-link"><span>INVESTIGATE FURTHER: ${c.db_name}</span><span>↗</span></a><button class="council-vbtn" id="vb-council-${i}"><span class="cvi"></span>&nbsp;${c.role.toUpperCase()}</button></div></div>`;}).join('');
+    result.council.forEach((c,i)=>{const btn=document.getElementById('vb-council-'+i);if(btn) btn.onclick=()=>speakCouncil(i,btn);});
+  }
+  document.getElementById('loader').style.display='none';
+  document.getElementById('artifact-view').style.display='block';
+  const rp=document.querySelector('.page-right');if(rp) rp.scrollTop=0;
+  setTimeout(()=>{const b=document.getElementById('vb-title');speak(result.title+'. '+result.lexical_anchor.word+'. '+result.lexical_anchor.definition,'narrator',b);},900);
+}
+const rightPage=document.querySelector('.page-right');
+if(rightPage){rightPage.addEventListener('scroll',function(){const h=rightPage.scrollHeight-rightPage.clientHeight;const sp=document.getElementById('scrollProgress');if(sp) sp.style.width=h<=0?'0%':(rightPage.scrollTop/h*100)+'%';});}
+document.getElementById('book-container').onclick=openBookCover;
+document.getElementById('btn-back-cover').onclick=()=>{haltAll();backToBook();};
+document.getElementById('btn-back-index').onclick=()=>backToIndex();
+document.getElementById('btn-random-page').onclick=()=>{haltAll();if(isFetchingNode) return;extractMimir(NODES[Math.floor(Math.random()*NODES.length)]);};
+const customBtn=document.getElementById('btn-custom-topic'),customInp=document.getElementById('custom-topic-inp');
+function submitCustomTopic(){
+  if(isFetchingNode||!customInp) return;
+  const q=customInp.value.trim();if(!q) return;
+  const customRune=FUTHARK[Math.floor(Math.random()*FUTHARK.length)];
+  const node={rune:customRune,label:q.slice(0,40).toUpperCase().replace(/[^A-Z0-9]+/g,'_'),query:q,custom:true};
+  playChime();extractMimir(node);customInp.value='';
+}
+if(customBtn) customBtn.onclick=submitCustomTopic;
+if(customInp) customInp.addEventListener('keydown',e=>{if(e.key==='Enter') submitCustomTopic();});
+document.getElementById('btn-narrate-all').onclick=()=>narrateAll();
+document.getElementById('btn-stop').onclick=()=>haltAll();
+document.getElementById('vb-title').onclick=function(){toggleSection('title',this);};
+document.getElementById('vb-interp').onclick=function(){toggleSection('interp',this);};
+document.getElementById('vb-verdict').onclick=function(){toggleSection('verdict',this);};
+
+/* INLINE KEY PROMPT */
+function promptForKey(){
+  return new Promise(resolve=>{
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(3,4,10,0.97);display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML=`<div style="border:1px solid var(--gold-dim);padding:2.5rem 3rem;text-align:center;max-width:420px;width:90%;position:relative;">
+      <div style="font-family:\'Cinzel Decorative\';font-size:2.5rem;color:var(--gold);margin-bottom:0.8rem;">ᛗ</div>
+      <div style="font-family:\'Share Tech Mono\';font-size:0.5rem;color:var(--ash-dim);letter-spacing:0.3em;margin-bottom:1.5rem;">GEMINI API KEY REQUIRED</div>
+      <input id="_key_inp" type="password" placeholder="AIzaSy..." autocomplete="off" spellcheck="false"
+        style="width:100%;background:rgba(0,0,0,0.6);border:1px solid var(--gold-dim);color:var(--ash);font-family:\'Share Tech Mono\';font-size:0.8rem;padding:0.8rem 1rem;margin-bottom:1rem;outline:none;letter-spacing:0.05em;">
+      <div id="_key_err" style="font-family:\'Share Tech Mono\';font-size:0.5rem;color:var(--blood);min-height:1rem;margin-bottom:0.8rem;"></div>
+      <button id="_key_btn" style="background:none;border:1px solid var(--gold);color:var(--gold);padding:0.7rem 2rem;font-family:\'Share Tech Mono\';cursor:pointer;text-transform:uppercase;font-size:0.6rem;letter-spacing:0.4em;width:100%;">CONFIRM</button>
+      <div style="font-family:\'Share Tech Mono\';font-size:0.42rem;color:var(--ash-dim);margin-top:1rem;line-height:1.8;">Free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--ice-bright);">aistudio.google.com</a><br>Stored in session only.</div>
+    </div>`;
+    document.body.appendChild(overlay);
+    const inp=overlay.querySelector('#_key_inp'),btn=overlay.querySelector('#_key_btn'),err=overlay.querySelector('#_key_err');
+    const submit=()=>{
+      const k=inp.value.trim();
+      if(!k||k.length<20){err.textContent='⚠ KEY TOO SHORT — Enter a valid Gemini API key.';return;}
+      GEMINI_API_KEY=k;
+      overlay.style.transition='opacity 0.5s';overlay.style.opacity='0';
+      setTimeout(()=>{overlay.remove();resolve(k);},500);
+    };
+    btn.onclick=submit;
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter') submit();});
+    inp.addEventListener('input',()=>{err.textContent='';});
+    setTimeout(()=>inp.focus(),50);
+  });
+}
+})();
+</script>
+</body>
+</html>

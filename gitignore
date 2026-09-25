@@ -1,0 +1,15 @@
+# Never commit local copies of the diary with a key hardcoded in for testing
+*-with-key.html
+*.local.html
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# In case any local env/secrets files get added later
+.env
+.env.*
+*.key
